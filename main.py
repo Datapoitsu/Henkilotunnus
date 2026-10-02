@@ -5,30 +5,40 @@
 
 import random
 
-control_characters = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","H","J","K","L","M","N","P","R","S","T","U","V","W","X","Y"]
-decade_characters_1800 = ["+"]
-decade_characters_1900 = ["-","Y","X","W","V","U"]
-decade_characters_2000 = ["A","B","C","D","E","F"]
-decade_characters = decade_characters_1800 + decade_characters_1900 + decade_characters_2000
-month_day_count = [31,28,31,30,31,30,31,31,30,31,30,31]
+CONTROL_CHARACTERS = ["0","1","2","3","4","5","6","7","8","9","A","B","C","D","E","F","H","J","K","L","M","N","P","R","S","T","U","V","W","X","Y"]
+CENTURY_CHARACTERS_1800 = ["+"]
+CENTURY_CHARACTERS_1900 = ["-","Y","X","W","V","U"]
+CENTURY_CHARACTERS_2000 = ["A","B","C","D","E","F"]
+CENTURY_CHARACTERS = CENTURY_CHARACTERS_1800 + CENTURY_CHARACTERS_1900 + CENTURY_CHARACTERS_2000
+MONTH_DAY_COUNT = [31,28,31,30,31,30,31,31,30,31,30,31]
+GREATEST_POSSIBLE_YEAR = 2099
+SMALLEST_POSSIBLE_YEAR = 1800
+GREATEST_POSSIBLE_MONTH = 12
+SMALLEST_POSSIBLE_MONTH = 1
 
-def is_leap_year(year):
+def is_leap_year(year:int) -> bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 def get_sex(id:str) -> str or None:
-    if int(id[9]) % 2 == 0:
-        return "Female"
-    return "Male"
+    try:
+        if int(id[9]) % 2 == 0:
+            return "Female"
+        return "Male"
+    except:
+        return None
 
 def get_year(id:str) -> int or None:
-    global decade_characters_1800, decade_characters_1900, decade_characters_2000
-    if id[6] in decade_characters_1800:
-        return int("18"+id[4:6])
-    if id[6] in decade_characters_1900:
-        return int("19"+id[4:6])
-    if id[6] in decade_characters_2000:
-        return int(20+id[4:6])
-    return None
+    global CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000
+    try:
+        if id[6] in CENTURY_CHARACTERS_1800:
+            return int("18"+id[4:6])
+        if id[6] in CENTURY_CHARACTERS_1900:
+            return int("19"+id[4:6])
+        if id[6] in CENTURY_CHARACTERS_2000:
+            return int("20"+id[4:6])
+        return None
+    except:
+        return None
 
 def get_month(id:str) -> int or None:
     try:
@@ -40,55 +50,65 @@ def get_month(id:str) -> int or None:
         return None
 
 def get_day(id:str) -> int or None:
+    global MONTH_DAY_COUNT
     try:
-        return int(id[0:2])
+        day = int(id[0:2])
+        extra_day = 0 #Leap day.
+        if get_month(id) == 2 and is_leap_year(get_year(id)):
+            extra_day = 1
+        if day < 1 or day > MONTH_DAY_COUNT[get_month(id) - 1] + extra_day:
+            return None
+        return day
     except:
         return None
 
-def valid_id(id:str) -> bool:
-    global control_characters, decade_characters_1800, decade_characters_1900, decade_characters_2000, decade_characters, month_day_count
+def get_data(id:str) -> str:
+    result = ""
+    if get_year(id) != None:
+        result += "Year: " + str(get_year(id)) + "\n"
+    else:
+        result += "Year: Unknown"
+    if get_month(id) != None:
+        result += "Month: " + str(get_month(id)) + "\n"
+    else:
+        result += "Month: Unknown"
+    if get_day(id) != None:
+        result += "Day: " + str(get_day(id)) + "\n"
+    else:
+        result += "Day: Unknown"
+    if get_sex(id) != None:
+        result += "Sex: " + str(get_sex(id)) + "\n"
+    else:
+        result += "Sex: Unknown"
+    return result
 
-    if len(id) != 11: #Proper Finnish id has lenght of 11.
-        return False
+def valid_id(id:str) -> bool:
+    global CONTROL_CHARACTERS, CENTURY_CHARACTERS
+
     if not isinstance(id, str):
         return False
-    
+
+    if len(id) != 11: #Proper Finnish id is 11 characters long.
+        return False
+
     id = id.upper() #Forcing to uppercase for simplicity.
 
-    for i in range(6): #First 6 characters are numbers.
-        if not id[i].isnumeric():
-            return False
-
-    if id[6] not in decade_characters:
+    if id[6] not in CENTURY_CHARACTERS:
         return False
 
-    for i in range(7,10):
-        if not id[i].isnumeric():
-            return False
-
-    if int(id[7:10]) < 2:
+    if int(id[7:10]) < 2: #Indevidual number can't be less than 2.
         return False
 
-    if not id[10] in control_characters:
+    if get_year(id) == None: #Valid year.
         return False
 
-    year = get_year(id)
-    if year == None:
+    if get_month(id) == None: #Valid month.
         return False
 
-    month = get_month(id)
-    if month == None:
+    if get_day(id) == None: #Valid day.
         return False
-
-    
-    if is_leap_year(year):
-        month_day_count[1] += 1
-    
-    day = int(id[0:2])
-    if day < 1 or day > month_day_count[month - 1]:
-        return False
-        
-    if id[10] != control_characters[int(id[0:6] + id[7:10]) % 31]:
+            
+    if id[10] != CONTROL_CHARACTERS[int(id[0:6] + id[7:10]) % 31]: #Valid control character.
         return False
 
     return True
@@ -97,88 +117,78 @@ def generateId(
         year_min:int = 1800, year_max:int = 2099, year:int or None = None,
         month_min:int = 1, month_max:int = 12, month:int or None = None,
         day_min:int = 1, day_max:int = 31, day:int or None = None,
-        sex:str or None = None,
+        indevidual_number:int or None = None, sex:str or None = None,
         century_characters:list[str] or None = None
         ) -> str:
-    global control_characters, decade_characters_1800, decade_characters_1900, decade_characters_2000, decade_characters, month_day_count
-
+    #Prioritizes data in order of them appearing in a proper id.
+    global GREATEST_POSSIBLE_YEAR, SMALLEST_POSSIBLE_YEAR, GREATEST_POSSIBLE_MONTH, SMALLEST_POSSIBLE_MONTH, MONTH_DAY_COUNT, CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000, CONTROL_CHARACTERS
     id = "0" * 11
-    
-    if year == None or year < 1800 or year > 2099:
-        if year_min < 1800:
-            year_min = 1800
-        if year_max > 2099:
-            year_max = 2099
-        year = random.randint(year_min,year_max)
 
+    # ----- Year ----- #
+    if year == None or year < SMALLEST_POSSIBLE_YEAR or year > GREATEST_POSSIBLE_YEAR:
+        year = random.randint(max(year_min,SMALLEST_POSSIBLE_YEAR),min(year_max,GREATEST_POSSIBLE_YEAR))
     id = id[:4] + str(year)[2:4] + id[6:]
 
-    if month == None or month < 1 or month > 12:
-        if month_min < 1:
-            month_min = 1
-        if month_max > 12:
-            month_max = 12
-        month = random.randint(month_min,month_max)
+    # ----- Month ----- #
+    if month == None or month < SMALLEST_POSSIBLE_MONTH or month > GREATEST_POSSIBLE_MONTH:
+        month = random.randint(max(month_min,SMALLEST_POSSIBLE_MONTH), min(month_max,GREATEST_POSSIBLE_MONTH))
+    id = id[:2] + str(month).zfill(2) + id[4:]
 
-    if month < 10:
-        id = id[:3] + str(month) + id[4:]
-    else:
-        id = id[:2] + str(month) + id[4:]
+    # ----- Day ----- #
+    extra_day = 0
+    if is_leap_year(year) and month == 2:
+        extra_day = 1
 
-    if is_leap_year(year):
-        month_day_count[1] += 1
+    if day == None or day < 1 or day > MONTH_DAY_COUNT[month - 1] + extra_day:   
+        day = random.randint(max(day_min, 1), min(day_max, MONTH_DAY_COUNT[month - 1] + extra_day))
+    id = str(day).zfill(2) + id[2:]
 
-    if day == None or day < 1 or day > month_day_count[month - 1]:
-        if day_min < 1:
-            day_min = 1
-        if day_max > month_day_count[month - 1]: #Limits the day to fit the month.
-            day_max = month_day_count[month - 1]
-    
-        day = random.randint(day_min,day_max)
-
-    if day < 10:
-        id = id[:1] + str(day) + id[2:]
-    else:
-        id = str(day) + id[2:]
-
-    # ----- Century character ----- #
-    if year < 1900:
-        id = id[:6] + "+" + id[7:]
-    elif year < 2000:
-        if century_characters != None:
-            century_characters = [x for x in century_characters if x in decade_characters_1900] #Limits symbols to only possible ones.
-        else:
-            century_characters = decade_characters_1900
-        id = id[:6] + random.choice(century_characters) + id[7:]
-    elif year < 2100:
-        if century_characters != None:
-            century_characters = [x for x in century_characters if x in decade_characters_2000] #Limits symbols to only possible ones.
-        else:
-            century_characters = decade_characters_2000
-        id = id[:6] + random.choice(century_characters) + id[7:]
+    # ----- Century character ----- #     
+    if century_characters != None: #Limited character set
+        if year < 1900:
+            century_characters = [x for x in century_characters if x in CENTURY_CHARACTERS_1800] #Limits symbols to only possible ones.
+        elif year < 2000:
+            century_characters = [x for x in century_characters if x in CENTURY_CHARACTERS_1900] #Limits symbols to only possible ones.
+        elif year < 2100:
+            century_characters = [x for x in century_characters if x in CENTURY_CHARACTERS_2000] #Limits symbols to only possible ones.
+    else: #All possible character symbols
+        if year < 1900:
+            century_characters = CENTURY_CHARACTERS_1800
+        elif year < 2000:
+            century_characters = CENTURY_CHARACTERS_1900
+        elif year < 2100:
+            century_characters = CENTURY_CHARACTERS_2000
+    id = id[:6] + random.choice(century_characters) + id[7:]
 
     # ----- Indevidual number ----- #
-    indevidual_number  = random.randint(2,999)
-    if sex == "m":
-        indevidual_number = random.randrange(3, 999, 2)
-    elif sex == "f":
-        indevidual_number = random.randrange(2, 998, 2)
+    if indevidual_number != None:
+        match sex:
+            case "m":
+                indevidual_number = random.randrange(3, 999, 2)
+            case "f":
+                indevidual_number = random.randrange(2, 998, 2)
+            case _:
+                indevidual_number  = random.randint(2,999)
     id = id[:7] + str(indevidual_number).zfill(3) + id[10:]
 
     # ----- Control character ----- #
-    return id[:10] + control_characters[int(id[:6] + id[7:10]) % len(control_characters)]
+    return id[:10] + CONTROL_CHARACTERS[int(id[:6] + id[7:10]) % len(CONTROL_CHARACTERS)]
 
-def TestId():
-    print(valid_id("290689-347P")) #True
-    print(valid_id("290406+8895")) #True
-    print(valid_id("070726-1335")) #True
-    print(valid_id("300990-002W")) #True
-    print(valid_id("260434+513A")) #True
-    print(valid_id("420753-7715")) #False --> Incorrect day, can't be 42
-    print(valid_id("1406897213")) #False --> Short
-    print(valid_id("140608+3944M")) #False --> Long
-    print(valid_id("251209-5607")) #False incorrect control character
-    print(valid_id("060916?753k")) #Incorrect century character
+def test_id(id:str, expected_result:bool, explination:str = "") -> None:
+    print("ID", id, "result", valid_id(id), "expected", expected_result, explination)
+
+def test_series():
+    test_id("290689-347P", True)
+    test_id("290406+8895", True)
+    test_id("070726-1335", True)
+    test_id("300990-002W", True)
+    test_id("260434+513A", True)
+
+    test_id("420753-7715", False, "Incorrect day, can't be 42")
+    test_id("1406897213", False, "Short")
+    test_id("140608+3944M", False, "Long")
+    test_id("251209-5607", False, "False incorrect control character")
+    test_id("060916?753k", False, "Incorrect century character")
 
 if __name__ == '__main__':
-    TestId()
+    test_series()
