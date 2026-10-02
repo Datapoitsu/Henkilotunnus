@@ -13,8 +13,6 @@ CENTURY_CHARACTERS = CENTURY_CHARACTERS_1800 + CENTURY_CHARACTERS_1900 + CENTURY
 MONTH_DAY_COUNT = [31,28,31,30,31,30,31,31,30,31,30,31]
 GREATEST_POSSIBLE_YEAR = 2099
 SMALLEST_POSSIBLE_YEAR = 1800
-GREATEST_POSSIBLE_MONTH = 12
-SMALLEST_POSSIBLE_MONTH = 1
 
 def is_leap_year(year:int) -> bool:
     return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
@@ -27,57 +25,64 @@ def get_sex(id:str) -> str or None:
     except:
         return None
 
-def get_year(id:str) -> int or None:
-    global CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000
+def get_date(id:str) -> list[int] or None:
+    global CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000, MONTH_DAY_COUNT
+    result = [None, None, None]
     try:
         if id[6] in CENTURY_CHARACTERS_1800:
-            return int("18"+id[4:6])
+            result[2] = int("18"+id[4:6])
         if id[6] in CENTURY_CHARACTERS_1900:
-            return int("19"+id[4:6])
+            result[2] = int("19"+id[4:6])
         if id[6] in CENTURY_CHARACTERS_2000:
-            return int("20"+id[4:6])
-        return None
+            result[2] = int("20"+id[4:6])
     except:
-        return None
-
-def get_month(id:str) -> int or None:
+        pass
     try:
         month = int(id[2:4])
-        if month < 1 or month > 12:
-            return None
-        return month
+        if month >= 1 and month <= 12:
+            result[1] = month
     except:
-        return None
+        pass
 
-def get_day(id:str) -> int or None:
-    global MONTH_DAY_COUNT
     try:
         day = int(id[0:2])
         extra_day = 0 #Leap day.
         if get_month(id) == 2 and is_leap_year(get_year(id)):
             extra_day = 1
-        if day < 1 or day > MONTH_DAY_COUNT[get_month(id) - 1] + extra_day:
-            return None
-        return day
+        if day >= 1 or day <= MONTH_DAY_COUNT[get_month(id) - 1] + extra_day:
+            result[0] = day
     except:
-        return None
+        pass
+
+    try:
+        day = int(id[0:2])
+        extra_day = 0 #Leap day.
+        if get_month(id) == 2 and is_leap_year(get_year(id)):
+            extra_day = 1
+        if day >= 1 or day <= MONTH_DAY_COUNT[get_month(id) - 1] + extra_day:
+            result[0] = day
+    except:
+        pass
+    return result
 
 def get_data(id:str) -> str:
     result = ""
-    if get_year(id) != None:
-        result += "Year: " + str(get_year(id)) + "\n"
+    date = get_date(id)
+    if date[2] != None:
+        result += "Year: " + str(date[2]) + "\n"
     else:
         result += "Year: Unknown"
-    if get_month(id) != None:
-        result += "Month: " + str(get_month(id)) + "\n"
+    if date[1] != None:
+        result += "Month: " + str(date[1]) + "\n"
     else:
         result += "Month: Unknown"
-    if get_day(id) != None:
-        result += "Day: " + str(get_day(id)) + "\n"
+    if date[0] != None:
+        result += "Day: " + str(date[0]) + "\n"
     else:
         result += "Day: Unknown"
-    if get_sex(id) != None:
-        result += "Sex: " + str(get_sex(id)) + "\n"
+    sex = get_sex(id)
+    if sex != None:
+        result += "Sex: " + str(sex) + "\n"
     else:
         result += "Sex: Unknown"
     return result
@@ -99,13 +104,7 @@ def valid_id(id:str) -> bool:
     if int(id[7:10]) < 2: #Indevidual number can't be less than 2.
         return False
 
-    if get_year(id) == None: #Valid year.
-        return False
-
-    if get_month(id) == None: #Valid month.
-        return False
-
-    if get_day(id) == None: #Valid day.
+    if None in get_date(id): #Validating the date.
         return False
             
     if id[10] != CONTROL_CHARACTERS[int(id[0:6] + id[7:10]) % 31]: #Valid control character.
@@ -121,7 +120,7 @@ def generateId(
         century_characters:list[str] or None = None
         ) -> str:
     #Prioritizes data in order of them appearing in a proper id.
-    global GREATEST_POSSIBLE_YEAR, SMALLEST_POSSIBLE_YEAR, GREATEST_POSSIBLE_MONTH, SMALLEST_POSSIBLE_MONTH, MONTH_DAY_COUNT, CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000, CONTROL_CHARACTERS
+    global GREATEST_POSSIBLE_YEAR, SMALLEST_POSSIBLE_YEAR, MONTH_DAY_COUNT, CENTURY_CHARACTERS_1800, CENTURY_CHARACTERS_1900, CENTURY_CHARACTERS_2000, CONTROL_CHARACTERS
     id = "0" * 11
 
     # ----- Year ----- #
@@ -130,8 +129,8 @@ def generateId(
     id = id[:4] + str(year)[2:4] + id[6:]
 
     # ----- Month ----- #
-    if month == None or month < SMALLEST_POSSIBLE_MONTH or month > GREATEST_POSSIBLE_MONTH:
-        month = random.randint(max(month_min,SMALLEST_POSSIBLE_MONTH), min(month_max,GREATEST_POSSIBLE_MONTH))
+    if month == None or month < 1 or month > 12:
+        month = random.randint(max(month_min,1), min(month_max,12))
     id = id[:2] + str(month).zfill(2) + id[4:]
 
     # ----- Day ----- #
